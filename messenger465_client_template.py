@@ -22,33 +22,35 @@ class MessageBoardNetwork(object):
     respective methods, below) and return the message or
     response data back to the MessageBoardController class.
     '''
-    def __init__(self, host, port):
+    def __init__(self, host, port, retries, timeout):
         '''
         Constructor.  You should create a new socket
         here and do any other initialization.
         '''
-	self.host = host
-	self.port = port
-	self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.host = host
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.retries = retries
+        self.timeout = timeout
 
     def getMessages(self):
         '''
         You should make calls to get messages from the message 
         board server here.
         '''
-	x = self.sock.sendto("AGET", (self.host, self.port))
-	if (x!=4):
-		return "ERROR"
+        x = self.sock.sendto("AGET", (self.host, self.port))
+        if (x!=4):
+            return "ERROR"
 
-	#select call
-	readlist = [self.sock]
-	(inputready, outputready, exceptready) = select.select(readlist, [], [], .1)	
+        #select call
+        readlist = [self.sock]
+        (inputready, outputready, exceptready) = select.select(readlist, [], [], .1)    
 
-	for i in inputready:
-		message = self.sock.recvfrom(1500)
-		print message
-		strlist = message[0].split('::')
-		return strlist
+        for i in inputready:
+            message = self.sock.recvfrom(1500)
+            print message
+            strlist = message[0].split('::')
+            return strlist
 
 
     def postMessage(self, user, message):
@@ -56,27 +58,34 @@ class MessageBoardNetwork(object):
         You should make calls to post messages to the message 
         board server here.
         '''
-	messageFinal = "APOST " + user + "::" + message
-	if len(user) > 8 or len(user) == 0 or "::" in user:
-		return -2
-	
-	if len(message) >= 60:
-		return -1 
-	
-	x = self.sock.sendto(messageFinal, (self.host, self.port))
+        messageFinal = "APOST " + user + "::" + message
+        if len(user) > 8 or len(user) == 0 or "::" in user:
+            return -2
+    
+        if len(message) >= 60:
+            return -1 
+        
+        i = 0
+    
+        while i < self.retries:
+            x = self.sock.sendto(messageFinal, (self.host, self.port))
 
+            (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
+            
+            if not inputready:
+                time.sleep(self.timeout)
+                i += 1
+            else:
+                for i in inputready:
+                    print ("*" * 50)
+                    message = self.sock.recvfrom(1500)
+                    print message[0]
+                    if message[0] == "AERROR":
+                        raise Exception("Sent message and got AERROR in return")
+                        return -3
+                    break
 
-	(inputready, outputready, exceptready) = select.select([self.sock], [], [], .1)	
-
-	for i in inputready:
-		print ("*" * 50)
-		message = self.sock.recvfrom(1500)
-		print message[0]
-		if message[0] == "AERROR":
-			raise Exception("Sent message and got AERROR in return")
-			return -3
-
-	return 0
+        return 0
 class MessageBoardController(object):
     '''
     Controller class in MVC pattern that coordinates
@@ -84,11 +93,11 @@ class MessageBoardController(object):
     to/from the server via the MessageBoardNetwork class.
     '''
 
-    def __init__(self, myname, host, port):
+    def __init__(self, myname, host, port, retries, timeout):
         self.name = myname
         self.view = MessageBoardView(myname)
         self.view.setMessageCallback(self.post_message_callback)
-        self.net = MessageBoardNetwork(host, port)
+        self.net = MessageBoardNetwork(host, port, retries, timeout)
 
     def run(self):
         self.view.after(1000, self.retrieve_messages)
@@ -101,23 +110,23 @@ class MessageBoardController(object):
         the message to the MessageBoardNetwork class via the
         postMessage method.
         '''
-	x = self.net.postMessage(self.name, m)
+        x = self.net.postMessage(self.name, m)
 
-	##Error Handling:
-	if x == 0:
-		self.view.setStatus("Message posted successfully")	
-	elif x == -1:
-		self.view.setStatus("Message longer 60 characters.")
-		return "ERROR Message too long"	
-	elif x == -2:
-		self.view.setStatus("Username invalid.")
-		return "ERROR Username invalid."
-	elif x == -3:
-		self.view.setStatus("Message posted successfully")
-		return "Sent message and got AERROR in return"
-	else:
-		print "FAILFAILFAIL"
-		self.view.setStatus("Message post fail")
+        ##Error Handling:
+        if x == 0:
+            self.view.setStatus("Message posted successfully")  
+        elif x == -1:
+            self.view.setStatus("Message longer 60 characters.")
+            return "ERROR Message too long" 
+        elif x == -2:
+            self.view.setStatus("Username invalid.")
+            return "ERROR Username invalid."
+        elif x == -3:
+            self.view.setStatus("Message posted successfully")
+            return "Sent message and got AERROR in return"
+        else:
+            print "FAILFAILFAIL"
+            self.view.setStatus("Message post fail")
 
 
     def retrieve_messages(self):
@@ -140,34 +149,34 @@ class MessageBoardController(object):
         self.view.after(1000, self.retrieve_messages)
         messagedata = self.net.getMessages()
 
-	#check for OK or Error
-	tempCheck = messagedata[0]
-	tempCheck = tempCheck.split(' ')
-	if tempCheck[0]=="ERROR":
-		self.view.setStatus("Messages retrieved unsuccesfully :(")
-		return "ERROR"
+        #check for OK or Error
+        tempCheck = messagedata[0]
+        tempCheck = tempCheck.split(' ')
+        if tempCheck[0]=="ERROR":
+            self.view.setStatus("Messages retrieved unsuccesfully :(")
+            return "ERROR"
 
-	if messagedata[:3] == "AGET":
-		return 0
+        if messagedata[:3] == "AGET":
+            return 0
 
-	#no new messages on server
-	if messagedata[0] == "AOK ":
-		print "NO NEW MESSAGES ON SERVER"
-		return 0
-	finalMessages = []
+        #no new messages on server
+        if messagedata[0] == "AOK ":
+            print "NO NEW MESSAGES ON SERVER"
+            return 0
+        finalMessages = []
 
-	messagedata[0] = messagedata[0][3:]
-	final = []
-	tempstr = ""
-	x = 0
-	for i in range(len(messagedata)):
-		tempstr += " " + messagedata[i]
-		if (i % 3) == 2:
-			final.append(tempstr)
-			tempstr = ""
+        messagedata[0] = messagedata[0][3:]
+        final = []
+        tempstr = ""
+        x = 0
+        for i in range(len(messagedata)):
+            tempstr += " " + messagedata[i]
+            if (i % 3) == 2:
+                final.append(tempstr)
+                tempstr = ""
 
-	self.view.setListItems(final)
-	self.view.setStatus("Retrieved " + str(len(final)) + " messages succesfully :)")
+        self.view.setListItems(final)
+        self.view.setStatus("Retrieved " + str(len(final)) + " messages succesfully :)")
 
 
 class MessageBoardView(Tkinter.Frame):
@@ -245,7 +254,12 @@ if __name__ == '__main__':
                         help='Set the host name for server to send requests to (default: localhost)')
     parser.add_argument('--port', dest='port', type=int, default=1111,
                         help='Set the port number for the server (default: 1111)')
+    parser.add_argument("--retries", dest='retries', type=int, default=3,
+                        help='Set the number of retransmissions in case of a timeout')
+    parser.add_argument("--timeout", dest='timeout', type=float, default=0.1,
+                        help='Set the RTO value')
     args = parser.parse_args()
+    
 
     myname = raw_input("What is your user name (max 8 characters)? ")
 
