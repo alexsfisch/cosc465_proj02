@@ -21,6 +21,7 @@ class MessageBoardNetwork(object):
     respective methods, below) and return the message or
     response data back to the MessageBoardController class.
     '''
+
     def __init__(self, host, port, retries, timeout):
         '''
         Constructor.  You should create a new socket
@@ -32,18 +33,44 @@ class MessageBoardNetwork(object):
         self.retries = retries
         self.timeout = timeout
 
+    #checksum from lab. Can now use in both getMessages and in postMessages
+    def checkSum(self, message):
+
+        #checksum code from lab01
+        charBinaryRep = []
+        for i in range(len(message)):
+            charBinaryRep.append(ord(message[i]))
+
+            lengthOfList = len(charBinaryRep)
+            x = 0
+
+        for g in range(lengthOfList):
+            #print charBinaryRep[g]
+            x = x ^ charBinaryRep[g]
+
+        return x
+            #end of checksum code,chr(x) gives final checksum
+
     def getMessages(self):
         '''
         You should make calls to get messages from the message 
         board server here.
         '''
+
+        #new header stuff for project 2******************************
         sequence = chr(48)
-        header = 'C' + sequence + chr(0)
-        x = self.sock.sendto(header+"GET", (self.host,self.port))
+        sequence = 0 #probably need to make this a global in order to increment it.....
+        checkSumValue = self.checkSum("GET")
+        header = 'C' + chr(checkSumValue) + "0"
+        tempMessage = header + "GET" #for the first one, it is "CV0GET", is this correct????
+        print "*" * 50
+        print "checkSum" + chr(checkSumValue)
+        print "tempMessage:  " + tempMessage
+        x = self.sock.sendto(tempMessage, (self.host,self.port))
 
         #FROM PROJ01 x = self.sock.sendto("AGET", (self.host, self.port))
-        if (x!=4):
-            return "ERROR"
+        if (x!=6): #AF: is 6 correct? C+sequence+0+GET?????
+            return "ERROR" #should create custome Errors. Will work on this once everything is working. 
 
         (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1)    
 
@@ -60,20 +87,10 @@ class MessageBoardNetwork(object):
         board server here.
         '''
         sequence = chr(48)
-        #checksum code from lab01
-	charBinaryRep = []
-        for i in range(len(message)):
-	    charBinaryRep.append(ord(s[i]))
+       
+        checkSum = checkSum(message)
 
-	lengthOfList = len(charBinaryRep)
-	x = 0
-
-	for g in range(lengthOfList):
-	    print charBinaryRep[g]
-	    x = x ^ charBinaryRep[g]
-        #end of checksum code,chr(x) gives final checksum
-
-        messageFinal = 'C' + sequence + chr(x) + user + "::" + message
+        messageFinal = 'C' + sequence + chr(checkSum) + user + "::" + message
         #FROM PROJ01 messageFinal = "APOST " + user + "::" + message
 
         if len(user) > 8 or len(user) == 0 or "::" in user: #check username length
