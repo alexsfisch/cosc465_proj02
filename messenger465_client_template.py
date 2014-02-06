@@ -13,7 +13,6 @@ import select
 import argparse
 import time
 
-
 class MessageBoardNetwork(object):
     '''
     Model class in the MVC pattern.  This class handles
@@ -38,7 +37,11 @@ class MessageBoardNetwork(object):
         You should make calls to get messages from the message 
         board server here.
         '''
-        x = self.sock.sendto("AGET", (self.host, self.port))
+        sequence = chr(48)
+        header = 'C' + sequence + chr(0)
+        x = self.sock.sendto(header+"GET", (self.host,self.port))
+
+        #FROM PROJ01 x = self.sock.sendto("AGET", (self.host, self.port))
         if (x!=4):
             return "ERROR"
 
@@ -56,7 +59,23 @@ class MessageBoardNetwork(object):
         You should make calls to post messages to the message 
         board server here.
         '''
-        messageFinal = "APOST " + user + "::" + message
+        sequence = chr(48)
+        #checksum code from lab01
+	charBinaryRep = []
+        for i in range(len(message)):
+	    charBinaryRep.append(ord(s[i]))
+
+	lengthOfList = len(charBinaryRep)
+	x = 0
+
+	for g in range(lengthOfList):
+	    print charBinaryRep[g]
+	    x = x ^ charBinaryRep[g]
+        #end of checksum code,chr(x) gives final checksum
+
+        messageFinal = 'C' + sequence + chr(x) + user + "::" + message
+        #FROM PROJ01 messageFinal = "APOST " + user + "::" + message
+
         if len(user) > 8 or len(user) == 0 or "::" in user: #check username length
             return -2
     
@@ -84,6 +103,7 @@ class MessageBoardNetwork(object):
                     break
 
         return 0
+
 class MessageBoardController(object):
     '''
     Controller class in MVC pattern that coordinates
