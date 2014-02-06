@@ -57,10 +57,10 @@ class MessageBoardNetwork(object):
         board server here.
         '''
         messageFinal = "APOST " + user + "::" + message
-        if len(user) > 8 or len(user) == 0 or "::" in user:
+        if len(user) > 8 or len(user) == 0 or "::" in user: #check username length
             return -2
     
-        if len(message) >= 60:
+        if len(message) >= 60: #make sure length of message is <= 60 characters
             return -1 
         
         i = 0
@@ -70,10 +70,10 @@ class MessageBoardNetwork(object):
 
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
             
-            if not inputready:
-                time.sleep(self.timeout)
-                i += 1
-            else:
+            if not inputready: #if there is nothing to be retreived from server
+                time.sleep(self.timeout) #put self to sleep for timeout length
+                i += 1 #increment number of attempts
+            else: #if there is something to be retreived from server
                 for i in inputready:
                     print ("*" * 50)
                     message = self.sock.recvfrom(1500)
@@ -244,7 +244,7 @@ class MessageBoardView(Tkinter.Frame):
             self.root.destroy()
         except:
             pass
-            
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='COSC465 Message Board Client')
