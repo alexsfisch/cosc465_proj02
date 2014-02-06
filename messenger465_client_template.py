@@ -244,7 +244,7 @@ class MessageBoardView(Tkinter.Frame):
             self.root.destroy()
         except:
             pass
-
+            
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='COSC465 Message Board Client')
