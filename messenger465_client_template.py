@@ -42,9 +42,7 @@ class MessageBoardNetwork(object):
         if (x!=4):
             return "ERROR"
 
-        #select call
-        readlist = [self.sock]
-        (inputready, outputready, exceptready) = select.select(readlist, [], [], .1)    
+        (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1)    
 
         for i in inputready:
             message = self.sock.recvfrom(1500)
@@ -263,7 +261,7 @@ if __name__ == '__main__':
 
     myname = raw_input("What is your user name (max 8 characters)? ")
 
-    app = MessageBoardController(myname, args.host, args.port)
+    app = MessageBoardController(myname, args.host, args.port, args.retries, args.timeout)
     app.run()
 
 
