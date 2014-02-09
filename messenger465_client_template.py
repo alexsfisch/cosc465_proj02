@@ -35,7 +35,6 @@ class MessageBoardNetwork(object):
 
     #checksum from lab. Can now use in both getMessages and in postMessages
     def checkSum(self, message):
-        #checksum code from lab01
         charBinaryRep = []
         for i in range(len(message)):
             charBinaryRep.append(ord(message[i]))
@@ -45,10 +44,8 @@ class MessageBoardNetwork(object):
         x = 0
 
         for g in range(lengthOfList):
-            #print charBinaryRep[g]
             x = x ^ charBinaryRep[g]
         return chr(x)
-            #end of checksum code,chr(x) gives final checksum
 
     def getMessages(self, sequence):
         '''
@@ -56,28 +53,21 @@ class MessageBoardNetwork(object):
         board server here.
         '''
 
-        #new header stuff for project 2******************************
+        #new header for project 2
         checkSumValue = self.checkSum("GET")
         header = 'C' + sequence + checkSumValue
-        tempMessage = header + "GET" #for the first one, it is "CV0GET", is this correct????
-        print "*" * 50
-        print "checkSum" + checkSumValue
-        print "tempMessage:  " + tempMessage
-        #x = self.sock.sendto(tempMessage, (self.host,self.port))
-
-        #FROM PROJ01 x = self.sock.sendto("AGET", (self.host, self.port))
-       # if (x!=6): #AF: is 6 correct? C+sequence+0+GET?????
-        #    return "ERROR" #should create custome Errors. Will work on this once everything is working. 
-
-        #(inputready, outputready, exceptready) = select.select([self.sock], [], [], .1)    
-
+        tempMessage = header + "GET" 
+        #print "*" * 50
+        #print "checkSum" + checkSumValue
+        #print "tempMessage:  " + tempMessage
+        
         i = 0
         while i < self.retries:
             x = self.sock.sendto(tempMessage, (self.host, self.port))
 
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
             print "input ready    ", inputready
-            if inputready: #if there is nothing to be retreived from server
+            if inputready: #if there is something to be retreived from server
                     for i in inputready:
                         print ("*" * 50)
                         message = self.sock.recvfrom(1500)
@@ -86,11 +76,9 @@ class MessageBoardNetwork(object):
                         return strlist
                     break
 
-            else: #if there is something to be retreived from server
-                print "GOT HERE MOTHERFUCKER!!!!!!!!!!!!!!!!!!"
-                time.sleep(self.timeout) #put self to sleep for timeout length
-                i += 1 #increment number of attempts
-        print message
+            else: #if there is nothing to be retreived from server
+                time.sleep(self.timeout) 
+                i += 1 
         return 0
 
     def postMessage(self, user, message, sequence):
@@ -99,12 +87,12 @@ class MessageBoardNetwork(object):
         board server here.
         '''
        
-        print message
+        #print message
+	message = "POST " + user + "::" + message
         checkSumValue = self.checkSum(message)
-        print "checkSumValue    ", checkSumValue
-        messageFinal = 'C' + sequence + checkSumValue + "POST " + user + "::" + message
-        print "posting this message:        ", messageFinal
-        #FROM PROJ01 messageFinal = "APOST " + user + "::" + message
+        #print "checkSumValue    ", checkSumValue
+        messageFinal = 'C' + sequence + checkSumValue + message
+        #print "posting this message:        ", messageFinal
 
         if len(user) > 8 or len(user) == 0 or "::" in user: #check username length
             return -2
@@ -118,7 +106,7 @@ class MessageBoardNetwork(object):
 
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
             print "input ready    ", inputready
-            if inputready: #if there is nothing to be retreived from server
+            if inputready: #if there is something to be retreived from server
                     for i in inputready:
                         print ("*" * 50)
                         message = self.sock.recvfrom(1500)
@@ -127,11 +115,9 @@ class MessageBoardNetwork(object):
                         return strlist
                     break
 
-            else: #if there is something to be retreived from server
-                print "GOT HERE MOTHERFUCKER!!!!!!!!!!!!!!!!!!"
-                time.sleep(self.timeout) #put self to sleep for timeout length
-                i += 1 #increment number of attempts
-        print "timed out and no more retries!!!!!!!!******"
+            else: #if there is nothing to be retreived from server
+                time.sleep(self.timeout) 
+                i += 1
         return -1
 
 class MessageBoardController(object):
@@ -162,24 +148,18 @@ class MessageBoardController(object):
         x = self.net.postMessage(self.name, m, self.sequence)
 
         ##Error Handling:
-        if x == 0:
-            if self.sequence == '0':
-                self.sequence = '1'
-            else:
-                self.sequence = '0'
-            self.view.setStatus("Message posted successfully")  
-        elif x == -1:
+        if x == -1:
             self.view.setStatus("Message longer 60 characters.")
             return "ERROR Message too long" 
         elif x == -2:
             self.view.setStatus("Username invalid.")
             return "ERROR Username invalid."
-        elif x == -3:
-            self.view.setStatus("Message posted successfully")
-            return "Sent message and got AERROR in return"
+        #elif x == -3:
+            #self.view.setStatus("Message posted successfully")
+            #return "Sent message and got AERROR in return"
         else:
-            print "FAILFAILFAIL"
-            self.view.setStatus("Message post fail")
+            print "no error!!!!!!!!!!"
+            self.view.setStatus("Message posted successfully.")
 
 
     def retrieve_messages(self):
@@ -202,9 +182,9 @@ class MessageBoardController(object):
         self.view.after(1000, self.retrieve_messages)
 
         messagedata = self.net.getMessages(self.sequence)
-        print "MESSAGEDATA FULL:    ", messagedata
+        #print "MESSAGEDATA FULL:    ", messagedata
         #check for OK or Error
-        print "messagedata:    ", messagedata[0]
+        #print "messagedata:    ", messagedata[0]
         tempCheck = messagedata[0]
         tempCheck = tempCheck.split(' ')
         if "ERROR" in tempCheck:
@@ -213,14 +193,18 @@ class MessageBoardController(object):
 
         if "GET" in tempCheck:
             return 0
-
+        #THIS IS WHERE WE GET RID OF THE HEADER + OK
+        messagedata[0] = messagedata[0][6:]
+                
         #no new messages on server
         if  len(messagedata[0]) == 6:
             print "NO NEW MESSAGES ON SERVER"
+                
             if self.sequence == '0':
                 self.sequence = '1'
             else:
                 self.sequence = '0'
+            
             return 0
 
         finalMessages = []
@@ -239,9 +223,9 @@ class MessageBoardController(object):
         self.view.setListItems(final)
         self.view.setStatus("Retrieved " + str(len(final)) + " messages succesfully :)")
         if self.sequence == '0':
-            self.sequence = '1'
+           self.sequence = '1'
         else:
-            self.sequence = '0'
+           self.sequence = '0'
 
 
 class MessageBoardView(Tkinter.Frame):
