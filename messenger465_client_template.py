@@ -57,9 +57,9 @@ class MessageBoardNetwork(object):
         checkSumValue = self.checkSum("GET")
         header = 'C' + sequence + checkSumValue
         tempMessage = header + "GET" 
-        #print "*" * 50
-        #print "checkSum" + checkSumValue
-        #print "tempMessage:  " + tempMessage
+        print "*" * 50
+        print "checkSum " + checkSumValue
+        print "tempMessage:" + tempMessage
         
         i = 0
         while i < self.retries:
@@ -68,13 +68,11 @@ class MessageBoardNetwork(object):
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
             print "input ready    ", inputready
             if inputready: #if there is something to be retreived from server
-                    for i in inputready:
-                        print ("*" * 50)
-                        message = self.sock.recvfrom(1500)
-                        print "ACK:     ", message
-                        strlist = message[0].split('::')
-                        return strlist
-                    break
+                print ("*" * 50)
+                message = self.sock.recvfrom(1500)
+                print "ACK:     ", message
+                strlist = message[0].split('::')
+                return strlist
 
             else: #if there is nothing to be retreived from server
                 time.sleep(self.timeout) 
@@ -88,7 +86,7 @@ class MessageBoardNetwork(object):
         '''
        
         #print message
-	message = "POST " + user + "::" + message
+        message = "POST " + user + "::" + message
         checkSumValue = self.checkSum(message)
         #print "checkSumValue    ", checkSumValue
         messageFinal = 'C' + sequence + checkSumValue + message
@@ -98,6 +96,7 @@ class MessageBoardNetwork(object):
             return -2
     
         if len(message) >= 60: #make sure length of message is <= 60 characters
+            print "WTF???????"
             return -1 
         
         i = 0
@@ -107,18 +106,16 @@ class MessageBoardNetwork(object):
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
             print "input ready    ", inputready
             if inputready: #if there is something to be retreived from server
-                    for i in inputready:
-                        print ("*" * 50)
-                        message = self.sock.recvfrom(1500)
-                        print "ACK:     ", message
-                        strlist = message[0].split('::')
-                        return strlist
-                    break
+                print ("*" * 50)
+                message = self.sock.recvfrom(1500)
+                print "ACK:     ", message
+                strlist = message[0].split('::')
+                return strlist
 
             else: #if there is nothing to be retreived from server
                 time.sleep(self.timeout) 
                 i += 1
-        return -1
+        return -3 #this is wrong
 
 class MessageBoardController(object):
     '''
@@ -154,9 +151,9 @@ class MessageBoardController(object):
         elif x == -2:
             self.view.setStatus("Username invalid.")
             return "ERROR Username invalid."
-        #elif x == -3:
-            #self.view.setStatus("Message posted successfully")
-            #return "Sent message and got AERROR in return"
+        elif x == -3:
+            self.view.setStatus("No ACK from Server")
+            return "No ACK from Server"
         else:
             print "no error!!!!!!!!!!"
             self.view.setStatus("Message posted successfully.")
@@ -182,6 +179,11 @@ class MessageBoardController(object):
         self.view.after(1000, self.retrieve_messages)
 
         messagedata = self.net.getMessages(self.sequence)
+
+        if messagedata == 0:
+            print "no response from server"
+            return 0
+        print messagedata
         #print "MESSAGEDATA FULL:    ", messagedata
         #check for OK or Error
         #print "messagedata:    ", messagedata[0]
