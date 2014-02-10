@@ -63,6 +63,7 @@ class MessageBoardNetwork(object):
         
         i = 0
         while i < self.retries:
+            print "tempMessage  ", tempMessage
             x = self.sock.sendto(tempMessage, (self.host, self.port))
 
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
@@ -96,11 +97,11 @@ class MessageBoardNetwork(object):
             return -2
     
         if len(message) >= 60: #make sure length of message is <= 60 characters
-            print "WTF???????"
             return -1 
         
         i = 0
         while i < self.retries:
+
             x = self.sock.sendto(messageFinal, (self.host, self.port))
 
             (inputready, outputready, exceptready) = select.select([self.sock], [], [], .1) 
@@ -130,6 +131,7 @@ class MessageBoardController(object):
         self.view.setMessageCallback(self.post_message_callback)
         self.net = MessageBoardNetwork(host, port, retries, timeout)
         self.sequence = '0'
+        #print self.port
 
     def run(self):
         self.view.after(1000, self.retrieve_messages)
